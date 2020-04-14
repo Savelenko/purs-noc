@@ -1,4 +1,4 @@
-module App (CanvasApp, app, defaultAppSpec) where
+module App (CanvasApp, app, defaultAppSpec, class CanvasAppSpec, tick, handleKeyboard, handleMouse,  render) where
 
 import Prelude
 import Control.Monad.State as HS
@@ -13,13 +13,6 @@ import Model (Interval, KeyData, MouseData)
 type CanvasApp
   = H.Component HH.HTML (Const Void) Unit Void Aff
 
-type CanvasAppSpec state
-  = { initialState :: state
-    , tick :: Interval -> state -> state
-    , handleKeyboard :: KeyData -> state -> state
-    , handleMouse :: MouseData -> state -> state
-    , render :: state -> Effect Unit
-    }
 
 data Msg
   = Tick Interval
@@ -27,14 +20,23 @@ data Msg
   | Mouse MouseData
   | Render
 
-defaultAppSpec :: forall state. state -> CanvasAppSpec state
-defaultAppSpec initialState =
-  { initialState: initialState
-  , tick: \_ s -> s
-  , handleKeyboard: \_ s -> s
-  , handleMouse: \_ s -> s
-  , render: ignore
-  }
+
+class CanvasAppSpec state where
+    initialState :: state
+    tick :: Interval -> state -> state
+    handleKeyboard :: KeyData -> state -> state
+    handleMouse :: MouseData -> state -> state
+    render :: state -> Effect Unit
+
+-- defaultAppSpec :: forall state. state -> CanvasAppSpec state
+type defaultAppspec state
+
+instance defaultCanvasAppSpec :: CanvasAppSpec state where
+  initialState: initialState
+  tick: \_ s -> s
+  handleKeyboard: \_ s -> s
+  handleMouse: \_ s -> s
+  render: const (pure unit)
 
 foreign import ignore :: forall a. a -> Effect Unit
 
@@ -42,25 +44,23 @@ view :: H.ComponentHTML Msg () Aff
 view = HH.canvas [ HP.id_ "render-canvas", HP.width 800, HP.height 600 ]
 
 update ::
-  forall state.
-  CanvasAppSpec state ->
+  forall state. CanvasAppSpec state =>
   Msg ->
   H.HalogenM state Msg () Void Aff Unit
-update appSpec = case _ of
-  Tick interval -> HS.modify_ (appSpec.tick interval)
-  Keyboard kbData -> HS.modify_ (appSpec.handleKeyboard kbData)
-  Mouse mouseData -> HS.modify_ (appSpec.handleMouse mouseData)
+update = case _ of
+  Tick interval -> HS.modify_ (\s -> tick interval s)
+  Keyboard kbData -> HS.modify_ (\s -> handleKeyboard kbData s)
+  Mouse mouseData -> HS.modify_ (\s -> handleMouse mouseData s)
   Render -> do
     currentState <- HS.get
-    H.liftEffect (appSpec.render currentState)
+    H.liftEffect (render currentState)
 
 app ::
-  forall state.
-  CanvasAppSpec state ->
+  forall state. CanvasAppSpec state =>
   H.Component HH.HTML (Const Void) Unit Void Aff
-app appSpec =
+app =
   H.mkComponent
-    { initialState: const appSpec.initialState
+    { initialState: const initialState???
     , render: const view
-    , eval: H.mkEval $ H.defaultEval { handleAction = update appSpec }
+    , eval: H.mkEval $ H.defaultEval { handleAction = update ??? }
     }
