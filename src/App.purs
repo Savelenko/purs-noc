@@ -1,4 +1,17 @@
-module App (CanvasApp, app, defaultAppSpec, class CanvasAppSpec, tick, handleKeyboard, handleMouse,  render) where
+module App (
+  CanvasApp,
+  Impl(..),
+  defaultImpl,
+  makeApp,
+  CanvApp(..),
+  app,
+  class CanvasAppSpec,
+  tick,
+  handleKeyboard,
+  handleMouse,
+  render
+)
+where
 
 import Prelude
 import Control.Monad.State as HS
@@ -13,32 +26,43 @@ import Model (Interval, KeyData, MouseData)
 type CanvasApp
   = H.Component HH.HTML (Const Void) Unit Void Aff
 
-
 data Msg
   = Tick Interval
   | Keyboard KeyData
   | Mouse MouseData
   | Render
 
-
 class CanvasAppSpec state where
-    initialState :: state
-    tick :: Interval -> state -> state
-    handleKeyboard :: KeyData -> state -> state
-    handleMouse :: MouseData -> state -> state
-    render :: state -> Effect Unit
+  tick :: Interval -> state -> state
+  handleKeyboard :: KeyData -> state -> state
+  handleMouse :: MouseData -> state -> state
+  render :: state -> Effect Unit
 
--- defaultAppSpec :: forall state. state -> CanvasAppSpec state
-type defaultAppspec state
+type Impl state = {
+  tick :: Interval -> state -> state,
+  handleKeyboard :: KeyData -> state -> state,
+  handleMouse :: MouseData -> state -> state,
+  render :: state -> Effect Unit
+}
 
-instance defaultCanvasAppSpec :: CanvasAppSpec state where
-  initialState: initialState
-  tick: \_ s -> s
-  handleKeyboard: \_ s -> s
-  handleMouse: \_ s -> s
-  render: const (pure unit)
+defaultImpl :: forall state. Impl state
+defaultImpl = {
+  tick : const identity,
+  handleKeyboard : const identity,
+  handleMouse : const identity,
+  render : const (pure unit)
+}
 
-foreign import ignore :: forall a. a -> Effect Unit
+data CanvApp state = CanvApp state (Impl state)
+
+makeApp :: forall state. state -> Impl state -> CanvApp state
+makeApp = CanvApp
+
+instance canvasAppSpecCanvApp :: CanvasAppSpec (CanvApp state) where
+  tick interval (CanvApp state impl) = CanvApp (impl.tick interval state) impl
+  handleKeyboard keyData (CanvApp state impl) = CanvApp (impl.handleKeyboard keyData state) impl
+  handleMouse mouseData (CanvApp state impl) = CanvApp (impl.handleMouse mouseData state) impl
+  render (CanvApp state impl) = impl.render state
 
 view :: H.ComponentHTML Msg () Aff
 view = HH.canvas [ HP.id_ "render-canvas", HP.width 800, HP.height 600 ]
@@ -57,10 +81,11 @@ update = case _ of
 
 app ::
   forall state. CanvasAppSpec state =>
+  state ->
   H.Component HH.HTML (Const Void) Unit Void Aff
-app =
+app initialState =
   H.mkComponent
-    { initialState: const initialState???
+    { initialState: const initialState
     , render: const view
-    , eval: H.mkEval $ H.defaultEval { handleAction = update ??? }
+    , eval: H.mkEval $ H.defaultEval { handleAction = const (pure unit)}
     }

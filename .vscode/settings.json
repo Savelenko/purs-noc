@@ -1,4 +1,10 @@
 {
+    "editor.fontFamily": "Fira Code Light",
+    "editor.fontLigatures": true,
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2,
     "purescript.addSpagoSources": true,
+    "purescript.buildCommand": "yarn spago build -u --json-errors",
+    "purescript.pursExe": "./node_modules/.bin/purs",
     "purescript.packagePath": ".spago"
-  }
+}
