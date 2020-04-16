@@ -14,4 +14,5 @@ app =
         { render = \state -> log state
         , handleKeyboard = \e s -> Debug.unsafeLog e.keyCode
         , handleMouse = \e s -> Debug.unsafeLog e.location # \_ -> Debug.unsafeLog e # \_ -> s
+        , tick = \_ s -> Debug.unsafeLog "Tick!" # \_ -> s
         }

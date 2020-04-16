@@ -1,16 +1,20 @@
 module App (CanvasApp, app, defaultAppSpec) where
 
 import Prelude
+
 import Control.Monad.State as HS
 import Data.Const (Const)
 import Data.Int.Bits ((.&.))
 import Data.Maybe (Maybe(..), fromJust)
 import Effect (Effect)
 import Effect.Aff (Aff)
+import Effect.Exception.Unsafe (unsafeThrow)
+import Effect.Timer as Timer
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Query.EventSource as ES
 import Model (Interval, KeyData, KeyEvent(..), MouseButton(..), MouseData, MouseEvent(..))
 import Partial.Unsafe (unsafePartial)
 import Web.DOM.NonElementParentNode as NEPN
@@ -101,7 +105,13 @@ update ::
   Msg ->
   H.HalogenM state Msg () Void Aff Unit
 update appSpec = case _ of
-  Init -> H.liftEffect $ focusElement "render-canvas"
+  Init -> do
+    let eventSource = ES.effectEventSource $ \emitter -> do
+            let passTick = ES.emit emitter (Tick { milliseconds : 1000 })
+            intervalId <- Timer.setInterval 1000 passTick
+            pure $ ES.Finalizer (Timer.clearInterval intervalId)
+    _ <- H.subscribe $ eventSource
+    H.liftEffect $ focusElement "render-canvas"
   Tick interval -> HS.modify_ (appSpec.tick interval)
   Keyboard kbData -> HS.modify_ (appSpec.handleKeyboard kbData)
   Mouse mouseData -> HS.modify_ (appSpec.handleMouse mouseData)

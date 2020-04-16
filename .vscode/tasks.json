@@ -6,7 +6,7 @@
         {
             "label": "spago build",
             "type": "shell",
-            "command": "spago bundle-app --main Main --to dist/main.js",
+            "command": "yarn spago bundle-app --main Main --to dist/main.js",
             "group": {
                 "kind": "build",
                 "isDefault": true
